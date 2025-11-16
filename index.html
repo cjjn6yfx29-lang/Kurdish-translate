@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>وەرگێرا گروپێ ES</title>
+    <!-- بارکرنا Tailwind CSS و فۆنتێ Inter -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* شێوازێ فۆنت و بنەڕەتی */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c182a; 
+            min-height: 100vh;
+            /* لادانا overflow: hidden */
+            display: flex;
+            flex-direction: column; /* ڕێکخستنی ستوونی */
+            align-items: center;
+            padding: 1rem;
+            padding-bottom: 5rem; /* بۆ ئەوەی پاشکۆ (Footer) بە ئاسانی دەربکەوێت */
+        }
+        .main-container {
+            background: rgba(18, 25, 38, 0.95); 
+            border: 1px solid #4a90e2; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(74, 144, 226, 0.6);
+            box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.6);
+            /* وا دەکات لەسەر موبایل بە باشی کار بکات */
+            margin-top: auto; 
+            margin-bottom: auto;
+        }
+        /* شێوازێ وشیێن پشتخانێ */
+        .word {
+            position: absolute;
+            user-select: none;
+            pointer-events: none;
+            font-weight: 900; 
+            opacity: 0.03; 
+            color: #4a90e2;
+            transition: transform 6s ease-in-out, opacity 1s;
+            will-change: transform;
+            line-height: 1;
+            text-shadow: 0 0 8px rgba(74, 144, 226, 0.7); 
+        }
+        /* شێوازێ دوگمێ سەرەکی (کاریگەریا کانزایی) */
+        .action-button {
+            background-image: linear-gradient(145deg, #6b46c1 0%, #4c46e5 50%, #2b3b8c 100%);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 2px solid #a78bfa; 
+            color: #ffffff;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+        }
+        .action-button:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(79, 70, 229, 0.7), 0 0 15px #a78bfa;
+            filter: brightness(1.1);
+        }
+        .action-button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+        }
+
+        /* شێوازی دوگمەی گوھداری */
+        .listen-button {
+            background-color: #06b6d4;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .listen-button:hover {
+            background-color: #0891b2;
+            transform: scale(1.05);
+        }
+
+        /* شێوازێ select/dropdown */
+        .lang-select {
+            background-color: #1f2937;
+            border: 1px solid #475569;
+            color: white;
+            transition: border-color 0.2s;
+        }
+        .lang-select:focus {
+            border-color: #4f46e5;
+        }
+
+        /* شێوازێ سندوقێ دەرئێخستنێ (Output Box) */
+        #translation-output-container {
+            border: 2px solid #06b6d4; 
+            background-color: #0d1a2a; 
+        }
+        #translation-output {
+             font-weight: 500; 
+             text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
+        }
+        
+        /* شێوازێ سندوقێ نڤێسینا سەرەکی */
+        #main-input-area {
+             border: 2px solid #a78bfa; 
+             background-color: #1a2434; 
+             font-weight: 400;
+        }
+
+        /* شێوازێ دوگمێ گوهارتنێ */
+        #swap-lang-btn {
+            background-color: #374151;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        #swap-lang-btn:hover {
+            background-color: #4b5563;
+            transform: rotate(15deg);
+        }
+
+        /* شێوازی بارکردنی رەسم */
+        #image-preview-container {
+            max-height: 150px;
+            overflow: hidden;
+            background-color: #1f2937;
+        }
+
+        /* شێوازی inputی فایل */
+        .file-input-label {
+            background-color: #374151;
+            border: 1px solid #475569;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-input-label:hover {
+            background-color: #4b5563;
+        }
+    </style>
+</head>
+<body dir="rtl">
+
+    <!-- وشیێن جوهرا پشتخانێ -->
+    <div id="word-background" class="absolute inset-0 overflow-hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;"></div>
+
+    <!-- تەنێ سەرەکی -->
+    <div class="main-container w-full max-w-lg mx-auto p-6 md:p-10 rounded-2xl backdrop-blur-sm">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 text-center border-b border-indigo-500/50 pb-2">وەرگێرا گروپێ ES</h1>
+        
+        <!-- نیشادانا ئاراستەیا وەرگێڕانێ -->
+        <p id="direction-display" class="text-base text-cyan-400 font-medium mb-6 mt-4 text-center">
+            لڤێرێ زمانێن ژێدەر و ئارمانج دیارکە.
+        </p>
+
+        <!-- هەلبژارتنا زمانان -->
+        <div class="flex items-end justify-between space-x-3 space-x-reverse mb-6">
+            
+            <!-- زمانێ ژێدەر -->
+            <div class="w-2/5 flex-grow">
+                <label for="source-lang" class="block text-sm font-medium text-gray-300 mb-1">زمانێ ژێدەر:</label>
+                <select id="source-lang" class="lang-select w-full p-3 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></select>
+            </div>
+
+            <!-- دوگمێ گوهارتنێ -->
+            <div class="flex-shrink-0 mb-1">
+                 <button id="swap-lang-btn" title="گوهارتنا ئاراستەیێ" class="p-3 rounded-full shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-200">
+                        <polyline points="17 1 21 5 17 9"></polyline>
+                        <path d="M3 21V5a4 4 0 0 1 4-4h14"></path>
+                        <polyline points="7 23 3 19 7 15"></polyline>
+                        <path d="M21 3v14a4 4 0 0 1-4 4H3"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- زمانێ ئارمانج -->
+            <div class="w-2/5 flex-grow">
+                <label for="target-lang" class="block text-sm font-medium text-gray-300 mb-1">زمانێ ئارمانج:</label>
+                <select id="target-lang" class="lang-select w-full p-3 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></select>
+            </div>
+        </div>
+        
+        <!-- بەشێ بارکرنا رەسمی -->
+        <label class="block text-sm font-medium text-gray-300 mb-2 mt-4">بارکرنا رەسمەکێ:</label>
+        <div class="flex items-center space-x-3 space-x-reverse mb-4">
+            <input type="file" id="image-input" accept="image/*" class="hidden">
+            <label for="image-input" id="image-label" class="file-input-label flex-grow text-center text-white py-2 px-4 rounded-lg shadow-md">
+                <span id="image-status-text">رەسم هەلبژێرە (ئارەزوومەندانە)</span>
+            </label>
+            <button id="clear-image-btn" class="p-3 bg-red-600 rounded-lg text-white shadow-md hover:bg-red-700" title="پاککرنا رەسمی">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        </div>
+        
+        <!-- پێشنیارکرنا رەسمی -->
+        <div id="image-preview-container" class="rounded-xl mb-4 hidden border-2 border-gray-600">
+            <img id="image-preview" class="w-full h-full object-cover rounded-xl" alt="پێشنیاری رەسم" />
+        </div>
+
+
+        <!-- سندوقێ نڤێسینا سەرەکی -->
+        <label for="main-input-area" class="block text-sm font-medium text-gray-300 mb-2 mt-4"><span id="input-label-text">نڤێسینێ لڤێرێ بنڤێسە:</span></label>
+        <textarea id="main-input-area" class="w-full p-4 mb-4 rounded-xl text-white focus:ring-indigo-500 focus:border-indigo-500 text-base" rows="4" placeholder="نڤێسینێ لڤێرێ بنڤێسە..." autofocus></textarea>
+        
+        <!-- دوگمێ چالاكی -->
+        <div class="flex justify-center mb-6">
+            <button id="text-translate-btn" class="action-button flex items-center justify-center px-10 py-4 font-extrabold rounded-full text-xl shadow-2xl" aria-label="وەرگێڕان">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 ml-3">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span id="button-text">وەرگێڕان</span>
+            </button>
+        </div>
+
+        <!-- نیشادانا ئەنجامی و گوھداری -->
+        <div id="translation-output-container" class="p-4 rounded-xl shadow-inner relative">
+            <div id="translation-output" class="min-h-16 text-gray-50 text-xl md:text-2xl flex items-center justify-center text-center">
+                لڤێرێ ئەنجامێ وەرگێڕانێ دەرکەڤیت...
+            </div>
+            <button id="listen-btn" class="listen-button absolute bottom-1 right-1 p-2 rounded-full text-white shadow-lg disabled:opacity-50" title="گوھداری" disabled>
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a4.99 4.99 0 0 1 0 7.07"></path></svg>
+            </button>
+        </div>
+        
+        <!-- پەیامێ بارودۆخ/شاشتی -->
+        <div id="status-message" class="mt-6 text-center text-sm min-h-6"></div>
+
+        <!-- پاشکۆ (Footer) - ناڤێ es group -->
+        <div class="mt-8 pt-4 border-t border-indigo-500/50 text-center text-xs text-gray-500">
+            © 2025 وەرگێرا گروپێ ES. پەرەپێدان ب رێیا <span class="text-indigo-400 font-bold">es group</span>
+        </div>
+    </div>
+
+    <script type="module">
+        // گۆڕاڤێن گەردونی
+        const apiKey = "AIzaSyCj65avLBy4pvecTAZmZbIsILlZf-WbMkg"; 
+        const TRANSLATION_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+        // هەڵگرتنی بەیس 64ی ڕەسم
+        let base64Image = null; 
+
+        // لیستا زمانان (نێزیکی 50 زمان)
+        const LANGUAGES = [
+            // شێوەزارێن کوردی
+            { code: 'ku-badini', name: 'کوردی (بادینی)', dir: 'rtl', prompt_name: 'Kurdish (Badini dialect, using Arabic script)' },
+            { code: 'ku-sorani', name: 'کوردی (سۆرانی)', dir: 'rtl', prompt_name: 'Kurdish (Sorani dialect, using Arabic script)' },
+            
+            // زمانێن گەردونی
+            { code: 'en', name: 'ئینگلیزی', dir: 'ltr', prompt_name: 'English' },
+            { code: 'ar', name: 'عەرەبی', dir: 'rtl', prompt_name: 'Arabic' },
+            { code: 'fa', name: 'فارسی', dir: 'rtl', prompt_name: 'Persian' },
+            { code: 'ur', name: 'ئوردوو', dir: 'rtl', prompt_name: 'Urdu' },
+            { code: 'he', name: 'عیبری', dir: 'rtl', prompt_name: 'Hebrew' },
+            
+            { code: 'fr', name: 'فەڕەنسی', dir: 'ltr', prompt_name: 'French' },
+            { code: 'es', name: 'ئیسپانی', dir: 'ltr', prompt_name: 'Spanish' },
+            { code: 'de', name: 'ئەڵمانی', dir: 'ltr', prompt_name: 'German' },
+            { code: 'ru', name: 'ڕووسی', dir: 'ltr', prompt_name: 'Russian' },
+            { code: 'zh', name: 'چینی (مەندارین)', dir: 'ltr', prompt_name: 'Chinese (Mandarin)' },
+            { code: 'ja', name: 'ژاپۆنی', dir: 'ltr', prompt_name: 'Japanese' },
+            { code: 'ko', name: 'کۆری', dir: 'ltr', prompt_name: 'Korean' },
+            { code: 'pt', name: 'پورتوگالی', dir: 'ltr', prompt_name: 'Portuguese' },
+            { code: 'it', name: 'ئیتاڵی', dir: 'ltr', prompt_name: 'Italian' },
+            { code: 'hi', name: 'هیندی', dir: 'ltr', prompt_name: 'Hindi' },
+            { code: 'bn', name: 'بەنگالی', dir: 'ltr', prompt_name: 'Bengali' },
+            { code: 'pa', name: 'پەنجابی', dir: 'ltr', prompt_name: 'Punjabi' },
+            { code: 'el', name: 'یۆنانی', dir: 'ltr', prompt_name: 'Greek' },
+            { code: 'nl', name: 'هۆڵەندی', dir: 'ltr', prompt_name: 'Dutch' },
+            { code: 'sv', name: 'سویدی', dir: 'ltr', prompt_name: 'Swedish' },
+            { code: 'pl', name: 'پۆڵەندی', dir: 'ltr', prompt_name: 'Polish' },
+            { code: 'vi', name: 'ڤێتنامی', dir: 'ltr', prompt_name: 'Vietnamese' },
+            { code: 'id', name: 'ئەندۆنیسی', dir: 'ltr', prompt_name: 'Indonesian' },
+            { code: 'tl', name: 'فلیپینی (تاگالۆگ)', dir: 'ltr', prompt_name: 'Filipino (Tagalog)' },
+            { code: 'th', name: 'تایلەندی', dir: 'ltr', prompt_name: 'Thai' },
+            { code: 'tr', name: 'تورکی', dir: 'ltr', prompt_name: 'Turkish' },
+            { code: 'sw', name: 'سواحیلی', dir: 'ltr', prompt_name: 'Swahili' },
+            { code: 'af', name: 'ئەفریکانسی', dir: 'ltr', prompt_name: 'Afrikaans' },
+            { code: 'yo', name: 'یۆروبا', dir: 'ltr', prompt_name: 'Yoruba' },
+            { code: 'zu', name: 'زولو', dir: 'ltr', prompt_name: 'Zulu' },
+            { code: 'ha', name: 'هاوسا', dir: 'ltr', prompt_name: 'Hausa' },
+            { code: 'am', name: 'ئەمەری', dir: 'ltr', prompt_name: 'Amharic' },
+            { code: 'uk', name: 'ئۆکرانی', dir: 'ltr', prompt_name: 'Ukrainian' },
+            { code: 'ro', name: 'ڕۆمانی', dir: 'ltr', prompt_name: 'Romanian' },
+            { code: 'hu', name: 'هەنگاری', dir: 'ltr', prompt_name: 'Hungarian' },
+            { code: 'cs', name: 'چیكی', dir: 'ltr', prompt_name: 'Czech' },
+            { code: 'sk', name: 'سلۆڤاکی', dir: 'ltr', prompt_name: 'Slovak' },
+            { code: 'da', name: 'دانیمارکی', dir: 'ltr', prompt_name: 'Danish' },
+            { code: 'fi', name: 'فینلەندی', dir: 'ltr', prompt_name: 'Finnish' },
+            { code: 'no', name: 'نەرویجی', dir: 'ltr', prompt_name: 'Norwegian' },
+            { code: 'ms', name: 'مالای', dir: 'ltr', prompt_name: 'Malay' },
+            { code: 'km', name: 'خمیر', dir: 'ltr', prompt_name: 'Khmer' },
+            { code: 'lo', name: 'لاوی', dir: 'ltr', prompt_name: 'Lao' },
+            { code: 'si', name: 'سینەهای', dir: 'ltr', prompt_name: 'Sinhalese' },
+            { code: 'ta', name: 'تامیلی', dir: 'ltr', prompt_name: 'Tamil' },
+            { code: 'te', name: 'تیلوگو', dir: 'ltr', prompt_name: 'Telugu' },
+            { code: 'mr', name: 'ماراتی', dir: 'ltr', prompt_name: 'Marathi' },
+            { code: 'gu', name: 'گوجەراتی', dir: 'ltr', prompt_name: 'Gujarati' },
+            { code: 'kn', name: 'کەنەدا', dir: 'ltr', prompt_name: 'Kannada' },
+            { code: 'ml', name: 'مالایالام', dir: 'ltr', prompt_name: 'Malayalam' },
+            { code: 'my', name: 'بۆرمەیی', dir: 'ltr', prompt_name: 'Burmese' },
+        ];
+
+        // --- ئەرکێ سەرەکی یێ API گێمینی (وەرگێڕان) ---
+
+        async function processRequest(inputText, sourceLang, targetLang) {
+            const outputDiv = document.getElementById('translation-output');
+            const buttonText = document.getElementById('button-text');
+            const statusDiv = document.getElementById('status-message');
+            const listenBtn = document.getElementById('listen-btn');
+
+            listenBtn.disabled = true;
+            statusDiv.innerHTML = '';
+            
+            const source = LANGUAGES.find(l => l.code === sourceLang);
+            const target = LANGUAGES.find(l => l.code === targetLang);
+
+            if (!source || !target || source.code === target.code) {
+                statusDiv.innerHTML = '<span class="text-yellow-400">تکایە دو زمانێن جیاواز هەلبژێرە.</span>';
+                outputDiv.textContent = 'تکایە دو زمانێن جیاواز هەلبژێرە...';
+                return;
+            }
+            if (!inputText && !base64Image) {
+                 statusDiv.innerHTML = '<span class="text-yellow-400">تکایە نڤێسینێ بنڤێسە یان رەسمەک بارکە.</span>';
+                 outputDiv.textContent = 'چ نڤێسین یان رەسمەک نەهاتیە نڤێسین...';
+                 return;
+            }
+
+            outputDiv.dir = target.dir; 
+            
+            // --- دروستکرنا پەیامێ سیستەم و پەیلوود ---
+            
+            let userParts = [];
+            
+            const targetPromptName = target.prompt_name;
+            const sourcePromptName = source.prompt_name;
+            
+            outputDiv.textContent = "وەرگێڕان دهێتە ئەنجامدان و پرۆسەکرن...";
+            buttonText.textContent = "وەرگێڕان دهێتە ئەنجامدان...";
+
+            let systemPrompt;
+            let finalInputText = inputText;
+
+            if (base64Image && !inputText) {
+                 // لۆژیکی OCR و وەرگێڕان (تەنها وێنە)
+                 systemPrompt = `You are an expert OCR and translation system. Your task is to FIRST extract all visible text from the image, and SECOND translate the extracted text accurately and naturally from the detected source language to ${targetPromptName}. Provide ONLY the translated text, without any commentary or the original extracted text.`;
+                 finalInputText = "Extract and translate the text in this image.";
+            } else {
+                 // لۆژیکی وەرگێڕانی ئاسایی یان وێنەی گوندکراو
+                 systemPrompt = `You are a professional translator. Your task is to translate the user's text accurately and naturally from ${sourcePromptName} to ${targetPromptName}. If an image is provided, use the visual context from the image to ensure the translation is highly accurate. Provide only the translated text, without any additional commentary or explanation.`;
+            }
+
+            userParts.push({ text: finalInputText });
+
+            // زێدەکرنا رەسمی د پەیلوودێ دا ئەگەر هەبێت
+            if (base64Image) {
+                const [mimeType, data] = base64Image.split(',');
+                userParts.push({
+                    inlineData: {
+                        mimeType: mimeType.replace('data:', '').replace(';base64', ''),
+                        data: data
+                    }
+                });
+            }
+
+            const payload = {
+                contents: [{ parts: userParts }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            // --- گازی وەڵامی API ---
+            try {
+                let response;
+                let delay = 1000;
+                for (let i = 0; i < 3; i++) {
+                    response = await fetch(TRANSLATION_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) break;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+                
+                if (!response || !response.ok) throw new Error(`API failed after multiple retries. Status: ${response ? response.status : 'Unknown'}`);
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (text) {
+                    outputDiv.textContent = text;
+                    outputDiv.dir = target.dir;
+                    statusDiv.innerHTML = '<span class="text-green-400">سەرکەفتی بوو.</span>';
+                    listenBtn.disabled = false;
+                } else {
+                    outputDiv.textContent = "سەرکەفتی نەبوو. چ ئەنجامەک نەهاتە وەرگرتن.";
+                    outputDiv.dir = 'rtl';
+                    statusDiv.innerHTML = '<span class="text-red-400">شاشتییەک ڕوویدا.</span>';
+                }
+            } catch (error) {
+                console.error("Processing Error:", error);
+                outputDiv.textContent = `شاشتی د دەمێ ئەنجامدانێ دا: ${error.message.substring(0, 70)}...`;
+                outputDiv.dir = 'rtl';
+                statusDiv.innerHTML = `<span class="text-red-400">شاشتی: ${error.message.substring(0, 50)}...</span>`;
+            } finally {
+                buttonText.textContent = "وەرگێڕان";
+            }
+        }
+
+        // --- ئەرکێن گوھداری (TTS) ---
+
+        // فەنکشێن یارمەتیدەر بۆ گۆڕینی PCM بۆ WAV
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcm16, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; // Int16
+            const blockAlign = numChannels * bytesPerSample;
+            const byteRate = sampleRate * blockAlign;
+            const dataLength = pcm16.length * bytesPerSample;
+            const buffer = new ArrayBuffer(44 + dataLength);
+            const view = new DataView(buffer);
+            let offset = 0;
+
+            // RIFF header
+            view.setUint32(offset, 0x52494646, false); offset += 4; // "RIFF"
+            view.setUint32(offset, 36 + dataLength, true); offset += 4; // File size - 8
+            view.setUint32(offset, 0x57415645, false); offset += 4; // "WAVE"
+
+            // fmt chunk
+            view.setUint32(offset, 0x666d7420, false); offset += 4; // "fmt "
+            view.setUint32(offset, 16, true); offset += 4; // Subchunk size (16 for PCM)
+            view.setUint16(offset, 1, true); offset += 2; // Audio format (1 for PCM)
+            view.setUint16(offset, numChannels, true); offset += 2; // Number of channels
+            view.setUint32(offset, sampleRate, true); offset += 4; // Sample rate
+            view.setUint32(offset, byteRate, true); offset += 4; // Byte rate
+            view.setUint16(offset, blockAlign, true); offset += 2; // Block align
+            view.setUint16(offset, 16, true); offset += 2; // Bits per sample (16)
+
+            // data chunk
+            view.setUint32(offset, 0x64617461, false); offset += 4; // "data"
+            view.setUint32(offset, dataLength, true); offset += 4; // Data size
+
+            // PCM data
+            for (let i = 0; i < pcm16.length; i++, offset += 2) {
+                view.setInt16(offset, pcm16[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+
+        async function speakText(textToSpeak, targetLang) {
+            const listenBtn = document.getElementById('listen-btn');
+            const statusDiv = document.getElementById('status-message');
+            
+            listenBtn.disabled = true;
+            listenBtn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+            statusDiv.innerHTML = '<span class="text-cyan-400">دەنگ دهێتە دروستکرن...</span>';
+            
+            const target = LANGUAGES.find(l => l.code === targetLang);
+
+            // هەڵبژاردنی دەنگێکی گونجاو - Charon گونجاوە بۆ زۆربەی زمانەکان
+            const voiceName = 'Charon'; 
+            
+            // داواکردنی TTS
+            const payload = {
+                contents: [{ parts: [{ text: textToSpeak }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voiceName }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            try {
+                const response = await fetch(TTS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`TTS API failed. Status: ${response.status}`);
+
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    // Extract sample rate from mimeType (e.g., audio/L16;rate=24000)
+                    const rateMatch = mimeType.match(/rate=(\d+)/);
+                    if (!rateMatch) throw new Error("Sample rate could not be extracted.");
+                    const sampleRate = parseInt(rateMatch[1], 10);
+                    
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    
+                    statusDiv.innerHTML = '<span class="text-green-400">گوھداری دەکرێت...</span>';
+                    
+                    audio.onended = () => {
+                         statusDiv.innerHTML = '<span class="text-green-400">گوھداری تەواو بوو.</span>';
+                    };
+
+                } else {
+                    throw new Error("Invalid audio data received.");
+                }
+
+            } catch (error) {
+                console.error("TTS Error:", error);
+                statusDiv.innerHTML = `<span class="text-red-400">شاشتی د دەنگدا: ${error.message.substring(0, 50)}...</span>`;
+            } finally {
+                listenBtn.disabled = false;
+                listenBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a4.99 4.99 0 0 1 0 7.07"></path></svg>';
+            }
+        }
+
+        // --- لۆژیکێ ڕووکارێ بکارئینەر ---
+
+        function updateUIDisplay() {
+            const sourceSelect = document.getElementById('source-lang');
+            const targetSelect = document.getElementById('target-lang');
+            const directionDisplay = document.getElementById('direction-display');
+            const mainInputArea = document.getElementById('main-input-area');
+            const outputArea = document.getElementById('translation-output');
+            const translateBtn = document.getElementById('button-text');
+            const inputLabelText = document.getElementById('input-label-text');
+            
+            const source = LANGUAGES.find(l => l.code === sourceSelect.value);
+            const target = LANGUAGES.find(l => l.code === targetSelect.value);
+
+            if (!source || !target) return;
+
+            // نیشادانا ئاراستەیا وەرگێڕانێ ل سەر
+            directionDisplay.textContent = `ژ ${source.name} ⬅️ بو ${target.name}`;
+            
+            // ڕێکخستنا ئاراستەیا نڤێسینێ د سندوقێ سەرەکی دا
+            mainInputArea.dir = source.dir;
+            if (source.dir === 'rtl') {
+                mainInputArea.classList.remove('text-left');
+                mainInputArea.classList.add('text-right');
+                mainInputArea.placeholder = "نڤێسینێ لڤێرێ بنڤێسە...";
+            } else {
+                mainInputArea.classList.remove('text-right');
+                mainInputArea.classList.add('text-left');
+                mainInputArea.placeholder = "Write text here...";
+            }
+
+            // گۆڕینی ناونیشانی سندووقی نووسین
+            inputLabelText.textContent = "نڤێسینێ لڤێرێ بنڤێسە:";
+
+            // ڕێکخستنا ئاراستەیا دەرئێخستنێ
+            outputArea.dir = target.dir;
+            outputArea.textContent = 'لڤێرێ ئەنجامێ وەرگێڕانێ دەرکەڤیت...';
+            document.getElementById('listen-btn').disabled = true;
+            translateBtn.textContent = "وەرگێڕان";
+        }
+        
+        // --- لۆژیکێ بارکرنا رەسمی ---
+        
+        function handleImageSelection(event) {
+            const file = event.target.files[0];
+            const imagePreview = document.getElementById('image-preview');
+            const previewContainer = document.getElementById('image-preview-container');
+            const imageStatusText = document.getElementById('image-status-text');
+            const mainInputArea = document.getElementById('main-input-area');
+            const inputLabelText = document.getElementById('input-label-text');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    base64Image = e.target.result; // هەڵگرتنی Base64
+                    previewContainer.classList.remove('hidden');
+                    imageStatusText.textContent = "رەسم ھاتیە ھەلبژارتن.";
+                    
+                    // گۆڕینی ناونیشانی سندووقی نووسین
+                    inputLabelText.textContent = "نڤێسینێ لڤێرێ بنڤێسە (یان بەتاڵ بهێڵەرەوە بۆ وەرگێڕانی تێکستی وێنە):";
+                };
+                reader.readAsDataURL(file);
+            } else {
+                clearImage();
+            }
+        }
+        
+        function clearImage() {
+            base64Image = null;
+            document.getElementById('image-input').value = ''; 
+            document.getElementById('image-preview-container').classList.add('hidden');
+            document.getElementById('image-preview').src = '';
+            document.getElementById('image-status-text').textContent = "رەسم هەلبژێرە (ئارەزوومەندانە)";
+            document.getElementById('main-input-area').placeholder = "نڤێسینێ لڤێرێ بنڤێسە...";
+            document.getElementById('input-label-text').textContent = "نڤێسینێ لڤێرێ بنڤێسە:";
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sourceSelect = document.getElementById('source-lang');
+            const targetSelect = document.getElementById('target-lang');
+            const swapLangBtn = document.getElementById('swap-lang-btn');
+            const textTranslateBtn = document.getElementById('text-translate-btn');
+            const mainInputArea = document.getElementById('main-input-area');
+            const wordBackground = document.getElementById('word-background');
+            const imageInput = document.getElementById('image-input');
+            const clearImageBtn = document.getElementById('clear-image-btn');
+            const listenBtn = document.getElementById('listen-btn');
+            const outputDiv = document.getElementById('translation-output');
+
+
+            // --- فەنکشنێ بجهئینانا وەرگێڕانێ ---
+            const executeRequest = () => {
+                const inputText = mainInputArea.value.trim();
+                
+                if (inputText || base64Image) {
+                    processRequest(inputText, sourceSelect.value, targetSelect.value);
+                } else {
+                    document.getElementById('status-message').innerHTML = '<span class="text-yellow-400">تکایە نڤێسینێ بنڤێسە یان رەسمەک بارکە.</span>';
+                    outputDiv.textContent = "چ نڤێسین یان رەسمەک نەهاتیە نڤێسین...";
+                }
+            };
+            
+            // پڕکرنا هەردوو لیستێن هەلبژارتنێ
+            LANGUAGES.forEach(lang => {
+                const optionSource = new Option(lang.name, lang.code);
+                const optionTarget = new Option(lang.name, lang.code);
+                sourceSelect.add(optionSource);
+                targetSelect.add(optionTarget);
+            });
+
+            // دانانا بنەڕەت: کوردی بادینی بو ئینگلیزی
+            sourceSelect.value = 'ku-badini';
+            targetSelect.value = 'en';
+
+            // 1. ڕێکخستنا جوهرا وشیێن پشتخانێ
+            const bgWords = [
+                "بادینی", "سۆرانی", "ئینگلیزی", "وەرگێڕان", "دەنگ",
+                "رەسم", "API", "تێکست", "عەرەبی", "ES Group"
+            ];
+            
+            bgWords.forEach(word => {
+                const wordDiv = document.createElement('div');
+                wordDiv.className = 'word text-3xl md:text-5xl';
+                wordDiv.textContent = word;
+
+                wordDiv.style.fontSize = `${Math.random() * 2 + 1}rem`;
+                wordDiv.style.left = `${Math.random() * 100}vw`;
+                wordDiv.style.top = `${Math.random() * 100}vh`;
+
+                wordBackground.appendChild(wordDiv);
+
+                const animateWord = (element) => {
+                    const duration = Math.random() * 8 + 6; 
+                    const startX = parseFloat(element.style.left);
+                    const startY = parseFloat(element.style.top);
+
+                    const move = () => {
+                        const targetX = startX + (Math.random() - 0.5) * 20; 
+                        const targetY = startY + (Math.random() - 0.5) * 20; 
+
+                        element.style.transitionDuration = `${duration}s`;
+                        element.style.transform = `translate3d(${targetX - startX}vw, ${targetY - startY}vh, 0) scale(${Math.random() * 0.2 + 0.9})`;
+
+                        setTimeout(move, duration * 1000); 
+                    }
+                    move();
+                };
+                animateWord(wordDiv);
+            });
+            
+            // 2. کارلێکێن ڕووکارێ بکارئینەر
+            updateUIDisplay();
+
+            sourceSelect.addEventListener('change', updateUIDisplay);
+            targetSelect.addEventListener('change', updateUIDisplay);
+            
+            swapLangBtn.addEventListener('click', () => {
+                const tempValue = sourceSelect.value;
+                sourceSelect.value = targetSelect.value;
+                targetSelect.value = tempValue;
+                updateUIDisplay();
+            });
+
+            // لۆژیکێ رەسمی
+            imageInput.addEventListener('change', handleImageSelection);
+            clearImageBtn.addEventListener('click', clearImage);
+            
+            // لۆژیکێ گوھداری
+            listenBtn.addEventListener('click', () => {
+                const targetLang = document.getElementById('target-lang').value;
+                const text = outputDiv.textContent.trim();
+                if (text && text !== 'لڤێرێ ئەنجامێ وەرگێڕانێ دەرکەڤیت...') {
+                    speakText(text, targetLang);
+                }
+            });
+
+
+            textTranslateBtn.addEventListener('click', executeRequest);
+            
+            // تواناکردنا Enter بو نڤێسینا راستەوخو
+            mainInputArea.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey && (mainInputArea.value.trim() || base64Image)) {
+                    event.preventDefault(); 
+                    executeRequest();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
